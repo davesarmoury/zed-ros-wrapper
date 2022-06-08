@@ -112,8 +112,10 @@ void ZEDWrapperNodelet::onInit()
     std::string img_gray_topic = "/image_rect_gray";
     std::string img_raw_gray_topic_ = "/image_raw_gray";
     std::string raw_suffix = "_raw";
+    std::string full_suffix = "_full";
     std::string left_topic = leftTopicRoot + img_topic;
     std::string left_raw_topic = leftTopicRoot + raw_suffix + img_raw_topic;
+    std::string left_full_topic = leftTopicRoot + full_suffix + img_raw_topic;
     std::string right_topic = rightTopicRoot + img_topic;
     std::string right_raw_topic = rightTopicRoot + raw_suffix + img_raw_topic;
     std::string rgb_topic = rgbTopicRoot + img_topic;
@@ -411,6 +413,9 @@ void ZEDWrapperNodelet::onInit()
     mPubRawLeft = it_zed.advertiseCamera(left_raw_topic, 1); // left raw
     NODELET_INFO_STREAM("Advertised on topic " << mPubRawLeft.getTopic());
     NODELET_INFO_STREAM("Advertised on topic " << mPubRawLeft.getInfoTopic());
+    mPubFullLeft = it_zed.advertiseCamera(left_full_topic, 1); // left raw
+    NODELET_INFO_STREAM("Advertised on topic " << mPubFullLeft.getTopic());
+    NODELET_INFO_STREAM("Advertised on topic " << mPubFullLeft.getInfoTopic());
     mPubRight = it_zed.advertiseCamera(right_topic, 1); // right
     NODELET_INFO_STREAM("Advertised on topic " << mPubRight.getTopic());
     NODELET_INFO_STREAM("Advertised on topic " << mPubRight.getInfoTopic());
@@ -2454,6 +2459,7 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
     uint32_t rgbRawSubnumber = mPubRawRgb.getNumSubscribers();
     uint32_t leftSubnumber = mPubLeft.getNumSubscribers();
     uint32_t leftRawSubnumber = mPubRawLeft.getNumSubscribers();
+    uint32_t leftFullSubnumber = mPubFullLeft.getNumSubscribers();
     uint32_t rightSubnumber = mPubRight.getNumSubscribers();
     uint32_t rightRawSubnumber = mPubRawRight.getNumSubscribers();
     uint32_t rgbGraySubnumber = mPubRgbGray.getNumSubscribers();
@@ -2472,7 +2478,7 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
 
     bool retrieved = false;
 
-    sl::Mat mat_left, mat_left_raw;
+    sl::Mat mat_left, mat_left_raw, mat_left_full;
     sl::Mat mat_right, mat_right_raw;
     sl::Mat mat_left_gray, mat_left_raw_gray;
     sl::Mat mat_right_gray, mat_right_raw_gray;
@@ -2495,6 +2501,11 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
         mZed.retrieveImage(mat_left_raw, sl::VIEW::LEFT_UNRECTIFIED, sl::MEM::CPU, mMatResolVideo);
         retrieved = true;
         grab_ts = mat_left_raw.timestamp;
+    }
+    if (leftFullSubnumber > 0) {
+        mZed.retrieveImage(mat_left_full, sl::VIEW::LEFT_UNRECTIFIED, sl::MEM::CPU);
+        retrieved = true;
+        grab_ts = mat_left_full.timestamp;
     }
     if (rightSubnumber + stereoSubNumber > 0) {
         mZed.retrieveImage(mat_right, sl::VIEW::RIGHT, sl::MEM::CPU, mMatResolVideo);
@@ -2634,6 +2645,10 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
     if (leftRawSubnumber > 0) {
         sensor_msgs::ImagePtr rawLeftImgMsg = boost::make_shared<sensor_msgs::Image>();
         publishImage(rawLeftImgMsg, mat_left_raw, mPubRawLeft, mLeftCamInfoRawMsg, mLeftCamOptFrameId, stamp);
+    }
+    if (leftFullSubnumber > 0) {
+        sensor_msgs::ImagePtr fullLeftImgMsg = boost::make_shared<sensor_msgs::Image>();
+        publishImage(fullLeftImgMsg, mat_left_full, mPubFullLeft, mLeftCamInfoRawMsg, mLeftCamOptFrameId, stamp); // Camera info is wrong.  Not needed for me though
     }
     if (rgbRawSubnumber > 0) {
         sensor_msgs::ImagePtr rawRgbImgMsg = boost::make_shared<sensor_msgs::Image>();

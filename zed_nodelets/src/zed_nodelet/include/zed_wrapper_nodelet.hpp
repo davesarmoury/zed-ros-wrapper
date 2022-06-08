@@ -421,6 +421,7 @@ private:
     image_transport::CameraPublisher mPubRawRgb; //
     image_transport::CameraPublisher mPubLeft; //
     image_transport::CameraPublisher mPubRawLeft; //
+    image_transport::CameraPublisher mPubFullLeft; //
     image_transport::CameraPublisher mPubRight; //
     image_transport::CameraPublisher mPubRawRight; //
     image_transport::CameraPublisher mPubDepth; //
