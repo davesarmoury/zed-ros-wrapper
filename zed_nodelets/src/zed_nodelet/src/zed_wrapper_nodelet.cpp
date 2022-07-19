@@ -170,6 +170,7 @@ void ZEDWrapperNodelet::onInit()
     mRightCamInfoMsg.reset(new sensor_msgs::CameraInfo());
     mRgbCamInfoRawMsg.reset(new sensor_msgs::CameraInfo());
     mLeftCamInfoRawMsg.reset(new sensor_msgs::CameraInfo());
+    mLeftCamInfoFullMsg.reset(new sensor_msgs::CameraInfo());
     mRightCamInfoRawMsg.reset(new sensor_msgs::CameraInfo());
     mDepthCamInfoMsg.reset(new sensor_msgs::CameraInfo());
 
@@ -2105,6 +2106,41 @@ void ZEDWrapperNodelet::publishCamInfo(sensor_msgs::CameraInfoPtr camInfoMsg, ro
     seq++;
 }
 
+void ZEDWrapperNodelet::scaleCamInfo(sensor_msgs::CameraInfoPtr origCamInfoMsg,
+    sensor_msgs::CameraInfoPtr scaledCamInfoMsg, double scale)
+{
+    scaledCamInfoMsg->distortion_model = origCamInfoMsg->distortion_model;
+
+    scaledCamInfoMsg->D.resize(5);
+    scaledCamInfoMsg->D[0] = origCamInfoMsg->D[0];
+    scaledCamInfoMsg->D[1] = origCamInfoMsg->D[1];
+    scaledCamInfoMsg->D[2] = origCamInfoMsg->D[2];
+    scaledCamInfoMsg->D[3] = origCamInfoMsg->D[3];
+    scaledCamInfoMsg->D[4] = origCamInfoMsg->D[4];
+
+    scaledCamInfoMsg->K.fill(0.0);
+    scaledCamInfoMsg->K[0] = origCamInfoMsg->K[0] * scale;
+    scaledCamInfoMsg->K[2] = origCamInfoMsg->K[2] * scale;
+    scaledCamInfoMsg->K[4] = origCamInfoMsg->K[4] * scale;
+    scaledCamInfoMsg->K[5] = origCamInfoMsg->K[5] * scale;
+    scaledCamInfoMsg->K[8] = 1.0;
+
+    scaledCamInfoMsg->R.fill(0.0);
+    for (int i = 0; i < 9; i++) {
+        scaledCamInfoMsg->R[i] = origCamInfoMsg->R[i];
+    }
+
+    scaledCamInfoMsg->P.fill(0.0);
+    scaledCamInfoMsg->P[0] = origCamInfoMsg->P[0] * scale;
+    scaledCamInfoMsg->P[2] = origCamInfoMsg->P[2] * scale;
+    scaledCamInfoMsg->P[5] = origCamInfoMsg->P[5] * scale;
+    scaledCamInfoMsg->P[6] = origCamInfoMsg->P[6] * scale;
+    scaledCamInfoMsg->P[10] = 1.0;
+    scaledCamInfoMsg->width = origCamInfoMsg->width * scale;
+    scaledCamInfoMsg->height = origCamInfoMsg->height * scale;
+    scaledCamInfoMsg->header.frame_id = origCamInfoMsg->header.frame_id;
+}
+
 void ZEDWrapperNodelet::fillCamInfo(sl::Camera& zed, sensor_msgs::CameraInfoPtr leftCamInfoMsg,
     sensor_msgs::CameraInfoPtr rightCamInfoMsg, std::string leftFrameId, std::string rightFrameId,
     bool rawParam /*= false*/)
@@ -2503,7 +2539,7 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
         grab_ts = mat_left_raw.timestamp;
     }
     if (leftFullSubnumber > 0) {
-        mZed.retrieveImage(mat_left_full, sl::VIEW::LEFT_UNRECTIFIED, sl::MEM::CPU);
+        mZed.retrieveImage(mat_left_full, sl::VIEW::LEFT, sl::MEM::CPU);
         retrieved = true;
         grab_ts = mat_left_full.timestamp;
     }
@@ -2648,7 +2684,7 @@ void ZEDWrapperNodelet::callback_pubVideoDepth(const ros::TimerEvent& e)
     }
     if (leftFullSubnumber > 0) {
         sensor_msgs::ImagePtr fullLeftImgMsg = boost::make_shared<sensor_msgs::Image>();
-        publishImage(fullLeftImgMsg, mat_left_full, mPubFullLeft, mLeftCamInfoRawMsg, mLeftCamOptFrameId, stamp); // Camera info is wrong.  Not needed for me though
+        publishImage(fullLeftImgMsg, mat_left_full, mPubFullLeft, mLeftCamInfoFullMsg, mLeftCamOptFrameId, stamp); // Camera info is wrong.  Not needed for me though
     }
     if (rgbRawSubnumber > 0) {
         sensor_msgs::ImagePtr rawRgbImgMsg = boost::make_shared<sensor_msgs::Image>();
@@ -3225,6 +3261,7 @@ void ZEDWrapperNodelet::device_poll_thread_func()
     // Create and fill the camera information messages
     fillCamInfo(mZed, mLeftCamInfoMsg, mRightCamInfoMsg, mLeftCamOptFrameId, mRightCamOptFrameId);
     fillCamInfo(mZed, mLeftCamInfoRawMsg, mRightCamInfoRawMsg, mLeftCamOptFrameId, mRightCamOptFrameId, true);
+    scaleCamInfo(mLeftCamInfoMsg, mLeftCamInfoFullMsg, 1/mCamImageResizeFactor);
     fillCamDepthInfo(mZed, mDepthCamInfoMsg, mLeftCamOptFrameId);
 
     // the reference camera is the Left one (next to the ZED logo)

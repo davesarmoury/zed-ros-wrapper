@@ -222,6 +222,9 @@ protected:
         sensor_msgs::CameraInfoPtr rightCamInfoMsg, std::string leftFrameId, std::string rightFrameId,
         bool rawParam = false);
 
+  void scaleCamInfo(sensor_msgs::CameraInfoPtr origCamInfoMsg,
+      sensor_msgs::CameraInfoPtr scaledCamInfoMsg, double scale);
+
     /*! \brief Get the information of the ZED cameras and store them in an
    * information message for depth topics
    * \param zed : the sl::zed::Camera* pointer to an instance
@@ -489,6 +492,7 @@ private:
     sensor_msgs::CameraInfoPtr mRightCamInfoMsg;
     sensor_msgs::CameraInfoPtr mRgbCamInfoRawMsg;
     sensor_msgs::CameraInfoPtr mLeftCamInfoRawMsg;
+    sensor_msgs::CameraInfoPtr mLeftCamInfoFullMsg;
     sensor_msgs::CameraInfoPtr mRightCamInfoRawMsg;
     sensor_msgs::CameraInfoPtr mDepthCamInfoMsg;
 
